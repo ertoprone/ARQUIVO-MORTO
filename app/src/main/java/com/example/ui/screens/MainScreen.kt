@@ -554,12 +554,23 @@ fun MainScreen(viewModel: MainViewModel) {
                             }
                         }
                         Spacer(modifier = Modifier.width(4.dp))
+                        Button(
+                            onClick = {
+                                ExportHelper.shareGeneralReport(context, egressos, schoolName, operatorName)
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text("Emitir Relatório", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
                         TextButton(
                             onClick = {
                                 ExportHelper.shareCsvFile(context, egressos, schoolName)
                             }
                         ) {
-                            Text("Exportar CSV", style = MaterialTheme.typography.labelSmall)
+                            Text("CSV", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -619,6 +630,7 @@ fun MainScreen(viewModel: MainViewModel) {
         EgressoDetailSheet(
             egresso = egresso,
             schoolName = schoolName,
+            operatorName = operatorName,
             onDismiss = { viewModel.selectEgresso(null) },
             onEdit = {
                 egressoToEdit = it
@@ -671,6 +683,9 @@ fun MainScreen(viewModel: MainViewModel) {
             onImportFileSelected = { uri ->
                 viewModel.importFromSpreadsheetUri(uri)
             },
+            onExportGeneralReport = {
+                ExportHelper.shareGeneralReport(context, egressos, schoolName, operatorName)
+            },
             onExportCsv = {
                 ExportHelper.shareCsvFile(context, egressos, schoolName)
             },
@@ -688,6 +703,8 @@ fun MainScreen(viewModel: MainViewModel) {
     if (showStatsDialog) {
         StatsDialog(
             allEgressos = egressos,
+            schoolName = schoolName,
+            operatorName = operatorName,
             onDismiss = { showStatsDialog = false }
         )
     }

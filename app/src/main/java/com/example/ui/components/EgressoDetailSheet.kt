@@ -50,6 +50,7 @@ import com.example.util.ExportHelper
 fun EgressoDetailSheet(
     egresso: EgressoEntity,
     schoolName: String = "GESTÃO DE PRONTUÁRIOS",
+    operatorName: String = "Secretaria",
     onDismiss: () -> Unit,
     onEdit: (EgressoEntity) -> Unit,
     onDelete: (EgressoEntity) -> Unit
@@ -339,7 +340,7 @@ fun EgressoDetailSheet(
 
             // Action Buttons
             Button(
-                onClick = { ExportHelper.shareLocationSlip(context, egresso, schoolName) },
+                onClick = { ExportHelper.shareLocationSlip(context, egresso, schoolName, operatorName) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)

@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.HelpOutline
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ImportExportDialog(
     onImportFileSelected: (Uri) -> Unit,
+    onExportGeneralReport: () -> Unit,
     onExportCsv: () -> Unit,
     onSyncCloud: () -> Unit,
     onDeduplicateAndMerge: () -> Unit,
@@ -68,7 +70,7 @@ fun ImportExportDialog(
         shape = RoundedCornerShape(20.dp),
         title = {
             Text(
-                text = "Gerenciar Planilhas & Nuvem",
+                text = "Relatórios, Planilhas & Nuvem",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
         },
@@ -79,7 +81,18 @@ fun ImportExportDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Option 0: Cloud Sync
+                // Option 0: General Report
+                OptionCard(
+                    icon = Icons.Default.Description,
+                    title = "Emitir Relatório Geral Completo",
+                    description = "Gera documento oficial com cabeçalho da escola, estatísticas e relação de todos os prontuários",
+                    onClick = {
+                        onExportGeneralReport()
+                        onDismiss()
+                    }
+                )
+
+                // Option 1: Cloud Sync
                 OptionCard(
                     icon = Icons.Default.CloudSync,
                     title = "Sincronizar com a Nuvem",
@@ -90,7 +103,7 @@ fun ImportExportDialog(
                     }
                 )
 
-                // Option 1: Import file
+                // Option 2: Import file
                 OptionCard(
                     icon = Icons.Default.FileUpload,
                     title = "Importar Planilha do Aparelho",
@@ -100,18 +113,18 @@ fun ImportExportDialog(
                     }
                 )
 
-                // Option 2: Export CSV
+                // Option 3: Export CSV
                 OptionCard(
                     icon = Icons.Default.FileDownload,
-                    title = "Exportar Planilha (CSV)",
-                    description = "Gera arquivo com acentuação UTF-8 pronto para o Excel",
+                    title = "Exportar Planilha (CSV / Excel)",
+                    description = "Gera arquivo com acentuação UTF-8 pronto para abrir no Excel",
                     onClick = {
                         onExportCsv()
                         onDismiss()
                     }
                 )
 
-                // Option 3: Explanation of fields
+                // Option 4: Explanation of fields
                 OptionCard(
                     icon = Icons.Default.HelpOutline,
                     title = "Quais campos a planilha deve conter?",
@@ -155,7 +168,7 @@ fun ImportExportDialog(
                     }
                 }
 
-                // Option 4: Deduplicate and Merge Info
+                // Option 5: Deduplicate and Merge Info
                 OptionCard(
                     icon = Icons.Default.AutoFixHigh,
                     title = "Unificar e Remover Duplicações",

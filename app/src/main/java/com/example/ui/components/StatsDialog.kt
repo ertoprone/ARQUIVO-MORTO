@@ -17,7 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -27,25 +30,30 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.model.EgressoEntity
+import com.example.util.ExportHelper
 
 @Composable
 fun StatsDialog(
     allEgressos: List<EgressoEntity>,
+    schoolName: String = "GESTÃO DE PRONTUÁRIOS",
+    operatorName: String = "Secretaria",
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val totalCount = allEgressos.size
-    val totalCaixas = allEgressos.map { it.caixaArquivo }.distinct().size
+    val totalCaixas = allEgressos.map { it.caixaArquivo.ifBlank { "Caixa 01" } }.distinct().size
     val totalCursos = allEgressos.map { it.curso }.distinct().size
 
     val completas = allEgressos.count { it.statusDocumento.contains("Completo", ignoreCase = true) }
     val pendentes = allEgressos.count { it.statusDocumento.contains("Pendente", ignoreCase = true) }
     val retirados = allEgressos.count { it.statusDocumento.contains("Retirado", ignoreCase = true) }
 
-    val caixasMap = allEgressos.groupBy { it.caixaArquivo }.mapValues { it.value.size }
+    val caixasMap = allEgressos.groupBy { it.caixaArquivo.ifBlank { "Caixa 01" } }.mapValues { it.value.size }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,7 +141,7 @@ fun StatsDialog(
                                 ) {
                                     Text(text = caixa, style = MaterialTheme.typography.bodyMedium)
                                     Text(
-                                        text = "$count pastagem(ns)",
+                                        text = "$count pasta(s)",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                                     )
                                 }
@@ -141,11 +149,27 @@ fun StatsDialog(
                         }
                     }
                 }
+
+                // Share Stats Report Button inside Dialog
+                Button(
+                    onClick = {
+                        ExportHelper.shareStatsReport(context, allEgressos, schoolName, operatorName)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(imageVector = Icons.Default.Share, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Emitir Relatório de Estatísticas")
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Entendido")
+                Text("Fechar")
             }
         }
     )

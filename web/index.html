@@ -19,9 +19,26 @@
     body { font-family: 'Inter', sans-serif; }
     
     @media print {
-      body * { visibility: hidden; }
-      #printableSlip, #printableSlip * { visibility: visible; }
-      #printableSlip { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+      body {
+        background: white !important;
+        color: #000 !important;
+      }
+      body > *:not(#printContainer) {
+        display: none !important;
+      }
+      #printContainer, #printContainer * {
+        visibility: visible !important;
+      }
+      #printContainer {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        background: white !important;
+      }
     }
   </style>
 </head>
@@ -192,7 +209,13 @@
           <!-- Export Excel -->
           <button onclick="exportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-2.5 rounded-xl border border-emerald-200 transition flex items-center space-x-1.5">
             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-            <span>Exportar</span>
+            <span>Exportar CSV</span>
+          </button>
+
+          <!-- Emit Report Modal Button -->
+          <button onclick="openReportModal()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-2.5 rounded-xl border border-blue-200 transition flex items-center space-x-1.5" title="Emitir e Imprimir Relatório Oficial (PDF / Impressão)">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Emitir Relatório</span>
           </button>
 
           <!-- Import Spreadsheet -->
@@ -888,38 +911,67 @@
     </div>
   </div>
 
-  <!-- 9. PRINTABLE RECEIPT TEMPLATE (FOR PRINT / PDF) -->
-  <div id="printableSlip" class="hidden p-8 max-w-2xl mx-auto bg-white text-slate-900 font-sans border border-slate-300 rounded-xl">
-    <div class="text-center border-b-2 border-slate-800 pb-4 mb-4">
-      <h2 id="printSchoolTitle" class="text-xl font-bold uppercase tracking-wider">GESTÃO DE PRONTUÁRIOS ESCOLARES</h2>
-      <p class="text-xs text-slate-600 font-semibold uppercase">Setor de Arquivo Morto • Termo de Retirada de Documento</p>
-    </div>
+  <!-- 9. PRINT CONTAINER (FOR ALL REPORT & PDF EMISSIONS) -->
+  <div id="printContainer" class="hidden"></div>
 
-    <div class="space-y-4 text-sm">
-      <div class="bg-slate-100 p-4 rounded-lg border border-slate-300 space-y-1.5">
-        <p><strong>Nome do Aluno(a):</strong> <span id="printNome" class="text-base font-bold text-slate-900"></span></p>
-        <p><strong>Código SGDE / Matrícula:</strong> <span id="printSgde"></span> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CPF:</strong> <span id="printCpf"></span> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>RG:</strong> <span id="printRg"></span></p>
-        <p><strong>Curso / Modalidade:</strong> <span id="printCurso"></span> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Ano de Conclusão:</strong> <span id="printAno"></span></p>
-      </div>
-
-      <div class="text-xs space-y-1.5 text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
-        <p><strong>Situação do Documento:</strong> <span id="printStatus" class="font-semibold"></span></p>
-        <p><strong>Observações / Finalidade:</strong> <span id="printObs"></span></p>
-      </div>
-
-      <div class="pt-10 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
-        <div>
-          <div class="border-b border-slate-800 w-4/5 mx-auto mb-1"></div>
-          <p><strong>Assinatura do Solicitante / Egresso</strong></p>
+  <!-- 9.1 MODAL: EMISSÃO DE RELATÓRIOS OFICIAIS & PDF -->
+  <div id="modalReport" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="p-2 bg-blue-100 text-blue-700 rounded-xl">
+            <i data-lucide="printer" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Emissão de Relatório do Arquivo Morto</h3>
+            <p class="text-xs text-slate-500">Gere relatórios oficiais impressos ou em PDF com dados organizados</p>
+          </div>
         </div>
-        <div>
-          <div class="border-b border-slate-800 w-4/5 mx-auto mb-1"></div>
-          <p><strong>Operador Responsável</strong></p>
+        <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Report Type Tabs -->
+      <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2">
+        <button id="tabReportGeneral" onclick="switchReportTab('general')" class="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white transition">
+          Relatório Geral da Listagem
+        </button>
+        <button id="tabReportStats" onclick="switchReportTab('stats')" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+          Estatísticas & Caixas
+        </button>
+        <button id="tabReportTermo" onclick="switchReportTab('termo')" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+          Termo de Retirada (Aluno)
+        </button>
+      </div>
+
+      <!-- Report Preview Container (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+        <div id="reportPreviewArea" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-slate-800 font-sans text-xs space-y-4">
+          <!-- Dynamic rendered content for preview -->
         </div>
       </div>
 
-      <div class="text-[10px] text-slate-400 text-center pt-4">
-        Emitido em <span id="printDate"></span> • Sistema de Arquivo Morto
+      <!-- Action Footer -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <div class="text-xs text-slate-500">
+          <span id="reportInfoCounter" class="font-bold text-slate-700">0</span> registros incluídos
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="copyReportText()" class="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center space-x-1.5">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+            <span>Copiar Texto</span>
+          </button>
+          <button onclick="exportToExcel()" class="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition flex items-center space-x-1.5">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            <span>Planilha Excel</span>
+          </button>
+          <button onclick="printCurrentReport()" class="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition flex items-center space-x-1.5">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Imprimir / Salvar PDF</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1737,26 +1789,289 @@
       });
     }
 
-    // Print Receipt / PDF
+    // ----------------------------------------------------
+    // 6. MODAL: EMISSÃO DE RELATÓRIOS OFICIAIS & PDF
+    // ----------------------------------------------------
+    let currentReportTab = 'general';
+
+    function openReportModal(defaultTab = 'general') {
+      currentReportTab = defaultTab;
+      document.getElementById("modalReport").classList.remove("hidden");
+      document.getElementById("modalReport").classList.add("flex");
+      switchReportTab(defaultTab);
+      lucide.createIcons();
+    }
+
+    function closeReportModal() {
+      document.getElementById("modalReport").classList.add("hidden");
+      document.getElementById("modalReport").classList.remove("flex");
+    }
+
+    function switchReportTab(tab) {
+      currentReportTab = tab;
+      const tabs = ['general', 'stats', 'termo'];
+      tabs.forEach(t => {
+        const btn = document.getElementById("tabReport" + t.charAt(0).toUpperCase() + t.slice(1));
+        if (btn) {
+          if (t === tab) {
+            btn.className = "px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white transition";
+          } else {
+            btn.className = "px-4 py-2 text-xs font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+          }
+        }
+      });
+
+      if (tab === 'general') renderGeneralReportPreview();
+      else if (tab === 'stats') renderStatsReportPreview();
+      else if (tab === 'termo') renderTermoReportPreview();
+    }
+
+    function renderGeneralReportPreview() {
+      const list = (filteredEgressos && filteredEgressos.length > 0) ? filteredEgressos : allEgressos;
+      document.getElementById("reportInfoCounter").innerText = list.length;
+      
+      const now = new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR");
+      const completas = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("completo")).length;
+      const ativos = list.filter(e => (e.statusDocumento || "").toLowerCase() === "ativo").length;
+      const pendentes = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("pendente")).length;
+      const retirados = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("retirado")).length;
+      const digitais = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("digital")).length;
+
+      let rowsHtml = "";
+      list.forEach((e, idx) => {
+        rowsHtml += `
+          <tr class="border-b border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}">
+            <td class="p-2 font-mono text-[11px]">${idx + 1}</td>
+            <td class="p-2 font-bold">${e.nome || '—'}</td>
+            <td class="p-2 font-mono text-[11px]">${e.codigo || '—'}</td>
+            <td class="p-2">${e.cpf || '—'}</td>
+            <td class="p-2">${e.curso || '—'} ${e.anoConclusao ? '(' + e.anoConclusao + ')' : ''}</td>
+            <td class="p-2 font-semibold text-slate-900">${e.caixaArquivo || 'Caixa 01'}</td>
+            <td class="p-2">${e.prateleiraCorredor || '—'} / ${e.pastaProtocolo || '—'}</td>
+            <td class="p-2">
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                (e.statusDocumento || '').includes('Completo') ? 'bg-emerald-100 text-emerald-800' :
+                (e.statusDocumento || '') === 'Ativo' ? 'bg-blue-100 text-blue-800' :
+                'bg-amber-100 text-amber-800'
+              }">${e.statusDocumento || 'Arquivado'}</span>
+            </td>
+          </tr>
+        `;
+      });
+
+      const previewHtml = `
+        <div class="space-y-4">
+          <div class="text-center border-b-2 border-slate-800 pb-3">
+            <h1 class="text-lg font-black tracking-wide uppercase text-slate-900">${schoolName.toUpperCase()}</h1>
+            <p class="text-xs font-bold text-slate-600 uppercase">Relatório Geral de Prontuários e Arquivo Morto</p>
+            <div class="flex justify-between text-[11px] text-slate-500 pt-2">
+              <span>📅 <strong>Data de Emissão:</strong> ${now}</span>
+              <span>👤 <strong>Operador:</strong> ${activeOperator}</span>
+              <span>📊 <strong>Total de Registros:</strong> ${list.length}</span>
+            </div>
+          </div>
+
+          <!-- Summary Badges -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[11px]">
+            <div class="bg-slate-100 p-2 rounded-lg border border-slate-200"><strong>Completos:</strong> ${completas}</div>
+            <div class="bg-slate-100 p-2 rounded-lg border border-slate-200"><strong>Ativos:</strong> ${ativos}</div>
+            <div class="bg-slate-100 p-2 rounded-lg border border-slate-200"><strong>Pendentes:</strong> ${pendentes}</div>
+            <div class="bg-slate-100 p-2 rounded-lg border border-slate-200"><strong>2ª Via Digital:</strong> ${digitais}</div>
+            <div class="bg-slate-100 p-2 rounded-lg border border-slate-200"><strong>Retirados:</strong> ${retirados}</div>
+          </div>
+
+          <!-- Students Table -->
+          <div class="overflow-x-auto border border-slate-300 rounded-lg">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-800 text-white font-bold text-[11px]">
+                  <th class="p-2">#</th>
+                  <th class="p-2">Nome do Estudante</th>
+                  <th class="p-2">SGDE</th>
+                  <th class="p-2">CPF</th>
+                  <th class="p-2">Curso / Ano</th>
+                  <th class="p-2">Caixa</th>
+                  <th class="p-2">Prateleira/Pasta</th>
+                  <th class="p-2">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="8" class="p-4 text-center text-slate-400">Nenhum prontuário listado.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="text-center text-[10px] text-slate-400 pt-4 border-t border-slate-200">
+            ${schoolName.toUpperCase()} • Sistema de Gestão de Arquivo Morto • Emitido por ${activeOperator}
+          </div>
+        </div>
+      `;
+
+      document.getElementById("reportPreviewArea").innerHTML = previewHtml;
+    }
+
+    function renderStatsReportPreview() {
+      const list = allEgressos;
+      document.getElementById("reportInfoCounter").innerText = list.length;
+      const now = new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR");
+
+      const caixasMap = {};
+      list.forEach(e => {
+        const c = e.caixaArquivo || "Caixa 01";
+        caixasMap[c] = (caixasMap[c] || 0) + 1;
+      });
+
+      const cursosMap = {};
+      list.forEach(e => {
+        const c = e.curso || "Geral";
+        cursosMap[c] = (cursosMap[c] || 0) + 1;
+      });
+
+      const completas = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("completo")).length;
+      const ativos = list.filter(e => (e.statusDocumento || "").toLowerCase() === "ativo").length;
+      const pendentes = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("pendente")).length;
+      const retirados = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("retirado")).length;
+      const digitais = list.filter(e => (e.statusDocumento || "").toLowerCase().includes("digital")).length;
+
+      let caixasHtml = Object.entries(caixasMap).sort((a,b) => b[1] - a[1]).map(([c, count]) => `
+        <div class="flex justify-between p-2 border-b border-slate-200 text-xs">
+          <span class="font-bold text-slate-800">📦 ${c}</span>
+          <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${count} pasta(s)</span>
+        </div>
+      `).join("");
+
+      const previewHtml = `
+        <div class="space-y-4">
+          <div class="text-center border-b-2 border-slate-800 pb-3">
+            <h1 class="text-lg font-black tracking-wide uppercase text-slate-900">${schoolName.toUpperCase()}</h1>
+            <p class="text-xs font-bold text-slate-600 uppercase">Relatório Estatístico e Balanço do Arquivo Morto</p>
+            <div class="flex justify-between text-[11px] text-slate-500 pt-2">
+              <span>📅 Data: ${now}</span>
+              <span>👤 Operador: ${activeOperator}</span>
+              <span>📦 Caixas Ativas: ${Object.keys(caixasMap).length}</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <h4 class="font-bold text-xs uppercase text-slate-700">Situação Documental</h4>
+              <div class="text-xs space-y-1.5">
+                <div class="flex justify-between"><span>Arquivados Completos:</span> <strong class="text-emerald-600">${completas}</strong></div>
+                <div class="flex justify-between"><span>Ativos:</span> <strong class="text-blue-600">${ativos}</strong></div>
+                <div class="flex justify-between"><span>Pendentes:</span> <strong class="text-amber-600">${pendentes}</strong></div>
+                <div class="flex justify-between"><span>2ª Via Digital:</span> <strong class="text-purple-600">${digitais}</strong></div>
+                <div class="flex justify-between"><span>Documentos Retirados:</span> <strong class="text-rose-600">${retirados}</strong></div>
+                <div class="flex justify-between pt-2 border-t border-slate-300 font-bold"><span>Total Geral:</span> <strong>${list.length}</strong></div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <h4 class="font-bold text-xs uppercase text-slate-700">Distribuição por Caixas</h4>
+              <div class="max-h-48 overflow-y-auto space-y-1">
+                ${caixasHtml}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center text-[10px] text-slate-400 pt-4 border-t border-slate-200">
+            ${schoolName.toUpperCase()} • Sistema de Gestão de Arquivo Morto
+          </div>
+        </div>
+      `;
+
+      document.getElementById("reportPreviewArea").innerHTML = previewHtml;
+    }
+
+    function renderTermoReportPreview() {
+      const e = currentDetailEgresso || (allEgressos.length > 0 ? allEgressos[0] : null);
+      if (!e) {
+        document.getElementById("reportPreviewArea").innerHTML = `
+          <div class="p-8 text-center text-slate-500">
+            <p>Nenhum estudante selecionado no momento.</p>
+            <p class="text-[11px] mt-2">Clique sobre qualquer estudante na listagem principal para emitir o termo individual.</p>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById("reportInfoCounter").innerText = "1";
+      const now = new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR");
+
+      const previewHtml = `
+        <div class="p-4 max-w-xl mx-auto space-y-4 border border-slate-300 rounded-xl bg-white">
+          <div class="text-center border-b-2 border-slate-800 pb-3">
+            <h2 class="text-base font-black uppercase text-slate-900">${schoolName.toUpperCase()}</h2>
+            <p class="text-xs font-bold text-slate-600 uppercase">Setor de Arquivo Morto • Termo de Retirada de Documento</p>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+              <p><strong>Nome do Aluno(a):</strong> <span class="text-sm font-bold text-slate-900">${e.nome}</span></p>
+              <p><strong>SGDE / Matrícula:</strong> ${e.codigo || '—'} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CPF:</strong> ${e.cpf || '—'} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>RG:</strong> ${e.rg || '—'}</p>
+              <p><strong>Curso:</strong> ${e.curso || '—'} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Ano:</strong> ${e.anoConclusao || '—'} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Turma:</strong> ${e.turma || '—'}</p>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+              <p><strong>Localização:</strong> Caixa ${e.caixaArquivo || 'Caixa 01'} | Prateleira: ${e.prateleiraCorredor || '—'} | Pasta: ${e.pastaProtocolo || '—'}</p>
+              <p><strong>Situação do Documento:</strong> <span class="font-bold text-indigo-700">${e.statusDocumento || 'Arquivado'}</span></p>
+              <p><strong>Observações:</strong> ${e.observacoes || 'Nenhuma'}</p>
+            </div>
+
+            <div class="pt-8 grid grid-cols-2 gap-6 text-center text-[11px]">
+              <div>
+                <div class="border-b border-slate-800 w-4/5 mx-auto mb-1"></div>
+                <p><strong>Assinatura do Solicitante</strong></p>
+              </div>
+              <div>
+                <div class="border-b border-slate-800 w-4/5 mx-auto mb-1"></div>
+                <p><strong>Operador: ${activeOperator}</strong></p>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-slate-400 text-center pt-2">
+              Emitido em ${now} • Sistema de Arquivo Morto
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("reportPreviewArea").innerHTML = previewHtml;
+    }
+
+    function printCurrentReport() {
+      const content = document.getElementById("reportPreviewArea").innerHTML;
+      if (!content || content.trim().length === 0) return alert("Nenhum relatório pronto para impressão.");
+
+      const printDiv = document.getElementById("printContainer");
+      printDiv.innerHTML = content;
+      window.print();
+    }
+
+    function copyReportText() {
+      const list = (filteredEgressos && filteredEgressos.length > 0) ? filteredEgressos : allEgressos;
+      if (currentReportTab === 'general') {
+        let txt = `====================================================\n`;
+        txt += `         ${schoolName.toUpperCase()}\n`;
+        txt += `       RELATÓRIO GERAL DO ARQUIVO MORTO\n`;
+        txt += `====================================================\n`;
+        txt += `Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
+        txt += `Operador: ${activeOperator}\n`;
+        txt += `Total de Prontuários: ${list.length}\n\n`;
+        list.forEach((e, idx) => {
+          txt += `${idx + 1}. ${e.nome} (SGDE: ${e.codigo || '—'} | CPF: ${e.cpf || '—'})\n`;
+          txt += `   Caixa: ${e.caixaArquivo || 'Caixa 01'} | Prat: ${e.prateleiraCorredor || '—'} | Situação: ${e.statusDocumento || 'Arquivado'}\n`;
+        });
+        navigator.clipboard.writeText(txt).then(() => alert("Texto do relatório copiado com sucesso!"));
+      } else {
+        const preview = document.getElementById("reportPreviewArea").innerText;
+        navigator.clipboard.writeText(preview).then(() => alert("Texto do relatório copiado com sucesso!"));
+      }
+    }
+
+    // Print Receipt / PDF from Details Modal
     function printWithdrawalReceipt() {
       if (!currentDetailEgresso) return;
-      const e = currentDetailEgresso;
-      document.getElementById("printSchoolTitle").innerText = schoolName.toUpperCase();
-      document.getElementById("printNome").innerText = e.nome;
-      document.getElementById("printSgde").innerText = e.codigo || "—";
-      document.getElementById("printCpf").innerText = e.cpf || "—";
-      document.getElementById("printRg").innerText = e.rg || "—";
-      document.getElementById("printCurso").innerText = e.curso || "—";
-      document.getElementById("printAno").innerText = e.anoConclusao || "—";
-      document.getElementById("printCaixa").innerText = e.caixaArquivo || "Caixa 01";
-      document.getElementById("printPrateleira").innerText = e.prateleiraCorredor || "—";
-      document.getElementById("printPasta").innerText = e.pastaProtocolo || "—";
-      document.getElementById("printStatus").innerText = e.statusDocumento || "Arquivado";
-      document.getElementById("printObs").innerText = e.observacoes || "Nenhuma";
-      document.getElementById("printOperator").innerText = activeOperator;
-      document.getElementById("printDate").innerText = new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR");
-
-      window.print();
+      openReportModal('termo');
     }
 
     // Share via WhatsApp
