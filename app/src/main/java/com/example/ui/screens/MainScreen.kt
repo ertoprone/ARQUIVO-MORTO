@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,16 +24,29 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -66,14 +81,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.EgressoEntity
-import androidx.compose.material.icons.filled.ExitToApp
-import com.example.ui.components.LoginScreen
 import com.example.ui.components.AddEditEgressoDialog
+import com.example.ui.components.BatchStatusDialog
 import com.example.ui.components.EgressoCard
 import com.example.ui.components.EgressoDetailSheet
 import com.example.ui.components.FilterDialog
 import com.example.ui.components.ImportExportDialog
+import com.example.ui.components.LoginScreen
+import com.example.ui.components.OperatorsManagementDialog
+import com.example.ui.components.SchoolConfigDialog
 import com.example.ui.components.StatsDialog
+import com.example.ui.components.SystemConfigBottomBar
 import com.example.ui.viewmodel.MainViewModel
 import com.example.util.ExportHelper
 
@@ -84,11 +102,27 @@ fun MainScreen(viewModel: MainViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val isAccessConfigured by viewModel.isAccessConfigured.collectAsStateWithLifecycle()
+    val registeredEmail by viewModel.registeredEmail.collectAsStateWithLifecycle()
     val currentUserEmail by viewModel.currentUserEmail.collectAsStateWithLifecycle()
+    val schoolName by viewModel.schoolName.collectAsStateWithLifecycle()
+    val operatorName by viewModel.activeOperator.collectAsStateWithLifecycle()
+    val operatorsList by viewModel.operatorsList.collectAsStateWithLifecycle()
 
     if (!isAuthenticated) {
         LoginScreen(
-            onLoginSuccess = { email -> viewModel.loginUser(email) }
+            isAccessConfigured = isAccessConfigured,
+            registeredEmail = registeredEmail,
+            currentSchoolName = schoolName,
+            activeOperator = operatorName,
+            operatorsList = operatorsList,
+            onSchoolNameChange = { viewModel.updateSchoolName(it) },
+            onConfigureFirstAccess = { email, pass, op, school ->
+                viewModel.configureFirstAccess(email, pass, op, school)
+            },
+            onLoginWithPassword = { pass, selectedOp ->
+                viewModel.loginWithPassword(pass, selectedOp)
+            }
         )
         return
     }
@@ -102,11 +136,17 @@ fun MainScreen(viewModel: MainViewModel) {
     val distinctCaixas by viewModel.distinctCaixas.collectAsStateWithLifecycle()
     val distinctStatus by viewModel.distinctStatus.collectAsStateWithLifecycle()
 
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
+
     var showFilterDialog by remember { mutableStateOf(false) }
     var showAddEditDialog by remember { mutableStateOf(false) }
+    var showBatchStatusDialog by remember { mutableStateOf(false) }
     var egressoToEdit by remember { mutableStateOf<EgressoEntity?>(null) }
     var showImportExportDialog by remember { mutableStateOf(false) }
     var showStatsDialog by remember { mutableStateOf(false) }
+    var showSchoolConfigDialog by remember { mutableStateOf(false) }
+    var showOperatorsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(userFeedbackMessage) {
         userFeedbackMessage?.let { msg ->
@@ -119,63 +159,220 @@ fun MainScreen(viewModel: MainViewModel) {
             (if (filterState.status.isNotEmpty()) 1 else 0) +
             (if (filterState.caixa.isNotEmpty()) 1 else 0)
 
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isSelectionMode) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${selectedIds.size} selecionado(s)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
                             Icon(
-                                imageVector = Icons.Default.FolderOpen,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.height(22.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Arquivo Morto",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onBackground
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancelar Seleção",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
-                        Text(
-                            text = "Operador: ${currentUserEmail ?: "Admin"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    actions = {
+                        TextButton(
+                            onClick = {
+                                if (selectedIds.size == egressos.size && egressos.isNotEmpty()) {
+                                    viewModel.clearSelection()
+                                } else {
+                                    viewModel.selectAll(egressos)
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = if (selectedIds.size == egressos.size && egressos.isNotEmpty()) "Desmarcar" else "Todos (${egressos.size})",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Button(
+                            onClick = { showBatchStatusDialog = true },
+                            enabled = selectedIds.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DriveFileRenameOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Alterar Situação", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    IconButton(onClick = { showStatsDialog = true }) {
-                        Icon(imageVector = Icons.Default.Analytics, contentDescription = "Estatísticas")
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Column(
+                            modifier = Modifier
+                                .clickable { showSchoolConfigDialog = true }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.FolderOpen,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.height(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = schoolName,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Editar Nome da Escola",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    modifier = Modifier.height(14.dp)
+                                )
+                            }
+
+                            // Operador Clicável para Troca Rápida
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable { showOperatorsDialog = true }
+                                    .padding(vertical = 2.dp)
+                            ) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.height(12.dp).width(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Op: $operatorName",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Group,
+                                            contentDescription = "Trocar Operador",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.height(11.dp).width(11.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "• $currentUserEmail",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        actionIconContentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    actions = {
+                        IconButton(onClick = { viewModel.setSelectionMode(true) }) {
+                            Icon(imageVector = Icons.Default.Checklist, contentDescription = "Seleção em Lote")
+                        }
+                        IconButton(
+                            onClick = { viewModel.syncWithCloud() },
+                            enabled = !isSyncing
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .height(20.dp)
+                                        .width(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(imageVector = Icons.Default.CloudSync, contentDescription = "Sincronizar Nuvem")
+                            }
+                        }
                     }
-                    IconButton(onClick = { showImportExportDialog = true }) {
-                        Icon(imageVector = Icons.Default.TableChart, contentDescription = "Gerenciar Planilhas & Drive")
-                    }
-                    IconButton(onClick = { viewModel.logoutUser() }) {
-                        Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Bloquear / Sair")
-                    }
-                }
+                )
+            }
+        },
+        bottomBar = {
+            SystemConfigBottomBar(
+                schoolName = schoolName,
+                operatorName = operatorName,
+                userEmail = currentUserEmail,
+                isSyncing = isSyncing,
+                onOpenSchoolConfig = { showSchoolConfigDialog = true },
+                onOpenOperators = { showOperatorsDialog = true },
+                onSyncCloud = { viewModel.syncWithCloud() },
+                onOpenStats = { showStatsDialog = true },
+                onOpenImportExport = { showImportExportDialog = true },
+                onLogout = { viewModel.logoutUser() }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    egressoToEdit = null
-                    showAddEditDialog = true
-                },
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier.testTag("add_egresso_fab")
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Cadastrar Egresso")
+            if (isSelectionMode) {
+                if (selectedIds.isNotEmpty()) {
+                    FloatingActionButton(
+                        onClick = { showBatchStatusDialog = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.testTag("batch_status_fab")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.DriveFileRenameOutline, contentDescription = "Alterar Situação")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Alterar Situação (${selectedIds.size})", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                FloatingActionButton(
+                    onClick = {
+                        egressoToEdit = null
+                        showAddEditDialog = true
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.testTag("add_egresso_fab")
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Cadastrar Egresso")
+                }
             }
         }
     ) { innerPadding ->
@@ -199,7 +396,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         OutlinedTextField(
                             value = filterState.query,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = { Text("Nome, Código, CPF ou Caixa...", color = Color.Gray) },
+                            placeholder = { Text("Nome, SGDE, CPF ou Caixa...", color = Color.Gray) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Search,
@@ -321,18 +518,49 @@ fun MainScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Encontrados: ${egressos.size} registro(s)",
+                    text = if (isSelectionMode) "${selectedIds.size} de ${egressos.size} selecionado(s)" else "Encontrados: ${egressos.size} registro(s)",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelectionMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                if (egressos.isNotEmpty()) {
-                    TextButton(
-                        onClick = {
-                            ExportHelper.shareCsvFile(context, egressos)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (egressos.isNotEmpty()) {
+                        if (!isSelectionMode) {
+                            TextButton(
+                                onClick = { viewModel.setSelectionMode(true) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Checklist,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Lote", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                            }
+                        } else {
+                            TextButton(
+                                onClick = {
+                                    if (selectedIds.size == egressos.size) {
+                                        viewModel.clearSelection()
+                                    } else {
+                                        viewModel.selectAll(egressos)
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    text = if (selectedIds.size == egressos.size) "Desmarcar" else "Todos",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
                         }
-                    ) {
-                        Text("Exportar CSV (${egressos.size})", style = MaterialTheme.typography.labelSmall)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = {
+                                ExportHelper.shareCsvFile(context, egressos, schoolName)
+                            }
+                        ) {
+                            Text("Exportar CSV", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -340,9 +568,14 @@ fun MainScreen(viewModel: MainViewModel) {
             // Student Records List
             if (egressos.isEmpty()) {
                 EmptyStateView(
+                    schoolName = schoolName,
                     isFilterActive = activeFilterCount > 0 || filterState.query.isNotEmpty(),
                     onClearFilters = { viewModel.clearFilters(); viewModel.updateSearchQuery("") },
-                    onLoadSample = { viewModel.loadSampleDataset() }
+                    onImportClick = { showImportExportDialog = true },
+                    onAddClick = {
+                        egressoToEdit = null
+                        showAddEditDialog = true
+                    }
                 )
             } else {
                 LazyColumn(
@@ -358,7 +591,10 @@ fun MainScreen(viewModel: MainViewModel) {
                     ) { egresso ->
                         EgressoCard(
                             egresso = egresso,
-                            onClick = { viewModel.selectEgresso(egresso) }
+                            onClick = { viewModel.selectEgresso(egresso) },
+                            isSelectionMode = isSelectionMode,
+                            isSelected = selectedIds.contains(egresso.id),
+                            onToggleSelect = { viewModel.toggleSelection(egresso.id) }
                         )
                     }
                 }
@@ -366,10 +602,23 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
+    // Batch Status Update Dialog (Allows ONLY "Ativo" and "Arquivado Completo")
+    if (showBatchStatusDialog && selectedIds.isNotEmpty()) {
+        BatchStatusDialog(
+            selectedCount = selectedIds.size,
+            onApplyStatus = { newStatus ->
+                viewModel.updateBatchStatus(newStatus)
+                showBatchStatusDialog = false
+            },
+            onDismiss = { showBatchStatusDialog = false }
+        )
+    }
+
     // Detail Bottom Sheet
     selectedEgresso?.let { egresso ->
         EgressoDetailSheet(
             egresso = egresso,
+            schoolName = schoolName,
             onDismiss = { viewModel.selectEgresso(null) },
             onEdit = {
                 egressoToEdit = it
@@ -406,6 +655,8 @@ fun MainScreen(viewModel: MainViewModel) {
     if (showAddEditDialog) {
         AddEditEgressoDialog(
             initialEgresso = egressoToEdit,
+            schoolName = schoolName,
+            currentOperatorName = operatorName,
             onSave = { egresso ->
                 viewModel.saveEgresso(egresso)
                 showAddEditDialog = false
@@ -420,22 +671,14 @@ fun MainScreen(viewModel: MainViewModel) {
             onImportFileSelected = { uri ->
                 viewModel.importFromSpreadsheetUri(uri)
             },
-            onLoadSampleData = {
-                viewModel.loadSampleDataset()
-            },
             onExportCsv = {
-                ExportHelper.shareCsvFile(context, egressos)
+                ExportHelper.shareCsvFile(context, egressos, schoolName)
             },
-            onClearAllData = {
-                viewModel.clearAllData()
+            onSyncCloud = {
+                viewModel.syncWithCloud()
             },
-            onOpenDrive = {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://drive.google.com"))
-                try {
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Não foi possível abrir o Google Drive.", Toast.LENGTH_SHORT).show()
-                }
+            onDeduplicateAndMerge = {
+                viewModel.deduplicateAndMergeAll()
             },
             onDismiss = { showImportExportDialog = false }
         )
@@ -448,13 +691,54 @@ fun MainScreen(viewModel: MainViewModel) {
             onDismiss = { showStatsDialog = false }
         )
     }
+
+    // School Config Dialog
+    if (showSchoolConfigDialog) {
+        SchoolConfigDialog(
+            currentSchoolName = schoolName,
+            currentOperatorName = operatorName,
+            currentEmail = currentUserEmail ?: "secretariaeecv@gmail.com",
+            onOpenOperatorsManager = {
+                showSchoolConfigDialog = false
+                showOperatorsDialog = true
+            },
+            onSaveConfig = { newSchool ->
+                viewModel.updateSchoolName(newSchool)
+                showSchoolConfigDialog = false
+            },
+            onDismiss = { showSchoolConfigDialog = false }
+        )
+    }
+
+    // Operators Management Dialog (Máximo 3 operadores)
+    if (showOperatorsDialog) {
+        OperatorsManagementDialog(
+            operatorsList = operatorsList,
+            activeOperator = operatorName,
+            onSelectActiveOperator = { op ->
+                viewModel.selectActiveOperator(op)
+            },
+            onAddOperator = { newOp ->
+                viewModel.addOperator(newOp)
+            },
+            onEditOperator = { oldOp, newOp ->
+                viewModel.editOperator(oldOp, newOp)
+            },
+            onRemoveOperator = { opToRemove ->
+                viewModel.removeOperator(opToRemove)
+            },
+            onDismiss = { showOperatorsDialog = false }
+        )
+    }
 }
 
 @Composable
 private fun EmptyStateView(
+    schoolName: String,
     isFilterActive: Boolean,
     onClearFilters: () -> Unit,
-    onLoadSample: () -> Unit
+    onImportClick: () -> Unit,
+    onAddClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -475,7 +759,7 @@ private fun EmptyStateView(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = if (isFilterActive) "Nenhum estudante encontrado" else "Arquivo Morto sem Registros",
+            text = if (isFilterActive) "Nenhum estudante encontrado" else "Arquivo Morto Vazio",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
@@ -485,7 +769,7 @@ private fun EmptyStateView(
 
         Text(
             text = if (isFilterActive) "Tente ajustar ou limpar seus termos de busca e filtros avançados."
-            else "Importe uma planilha do Excel/CSV ou carregue a planilha de teste pré-configurada.",
+            else "Importe sua planilha de egressos de $schoolName ou cadastre um registro manualmente.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -503,14 +787,25 @@ private fun EmptyStateView(
                 Text("Limpar Filtros")
             }
         } else {
-            Button(
-                onClick = onLoadSample,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Icon(imageVector = Icons.Default.TableChart, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Carregar Planilha Exemplo")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = onImportClick,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(imageVector = Icons.Default.TableChart, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Importar Planilha")
+                }
+
+                OutlinedButton(
+                    onClick = onAddClick,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Cadastrar")
+                }
             }
         }
     }

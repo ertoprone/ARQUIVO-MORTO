@@ -4,8 +4,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +25,11 @@ import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SendToMobile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,11 +48,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.EgressoEntity
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EgressoCard(
     egresso: EgressoEntity,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -54,24 +64,47 @@ fun EgressoCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("egresso_card_${egresso.id}")
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = {
+                    if (isSelectionMode) {
+                        onToggleSelect()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = {
+                    onToggleSelect()
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header Row: Student Name & Status Badge
+            // Header Row: Checkbox (if in selection mode) + Student Name & Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect() },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                }
+
                 Text(
                     text = egresso.nome,
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -102,8 +135,17 @@ fun EgressoCard(
                     modifier = Modifier.height(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
+                val courseYearText = buildString {
+                    append(egresso.curso.ifEmpty { "Geral" })
+                    if (egresso.anoConclusao > 0) {
+                        append(" • ${egresso.anoConclusao}")
+                    }
+                    if (egresso.turma.isNotBlank()) {
+                        append(" (${egresso.turma})")
+                    }
+                }
                 Text(
-                    text = "${egresso.curso} • ${egresso.anoConclusao}",
+                    text = courseYearText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -113,7 +155,7 @@ fun EgressoCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Code & CPF Row with Copy Action
+            // SGDE & CPF Row with Copy Action
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -127,8 +169,14 @@ fun EgressoCard(
                         modifier = Modifier.height(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
+                    val idText = buildString {
+                        append("SGDE: ${egresso.codigo}")
+                        if (egresso.cpf.isNotBlank()) {
+                            append(" | CPF: ${egresso.cpf}")
+                        }
+                    }
                     Text(
-                        text = "Cód: ${egresso.codigo} | CPF: ${egresso.cpf}",
+                        text = idText,
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -137,22 +185,47 @@ fun EgressoCard(
                 IconButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("CPF/Código", "Nome: ${egresso.nome}\nCPF: ${egresso.cpf}\nCódigo: ${egresso.codigo}")
+                        val clip = ClipData.newPlainText("SGDE/Dados", "Nome: ${egresso.nome}\nSGDE: ${egresso.codigo}\nCPF: ${egresso.cpf}\nCaixa: ${egresso.caixaArquivo}\nPasta: ${egresso.pastaProtocolo}")
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copiado para a área de transferência", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Dados copiados para a área de transferência", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.height(28.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copiar CPF e Código",
+                        contentDescription = "Copiar SGDE e Dados",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.height(16.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // If 2ª via digital, show withdrawal format and date
+            if (egresso.statusDocumento == "2ª via digital" || egresso.formatoEnvioDigital.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFEDE9FE), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SendToMobile,
+                        contentDescription = null,
+                        tint = Color(0xFF6D28D9),
+                        modifier = Modifier.height(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "2ª Via: ${egresso.formatoEnvioDigital.ifEmpty { "Digital" }} ${if (egresso.dataEnvioDigital.isNotEmpty()) "• Em: ${egresso.dataEnvioDigital}" else ""}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                        color = Color(0xFF5B21B6)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Physical Archive Location Highlight Box
             Surface(
@@ -180,7 +253,7 @@ fun EgressoCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "LOCAL NO ARQUIVO MORTO",
+                                text = "LOCALIZAÇÃO NO ARQUIVO",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
@@ -220,8 +293,10 @@ fun EgressoCard(
 fun StatusChip(status: String) {
     val (bgColor, textColor) = when (status) {
         "Arquivado Completo", "Completo" -> Color(0xFFD1FAE5) to Color(0xFF065F46)
+        "Ativo" -> Color(0xFFE0F2FE) to Color(0xFF0369A1)
+        "2ª via digital" -> Color(0xFFF3E8FF) to Color(0xFF6B21A8)
         "Pendente Certificado", "Pendente" -> Color(0xFFFEF3C7) to Color(0xFF92400E)
-        "Retirado" -> Color(0xFFFFE4E6) to Color(0xFF9F1239)
+        "Retirado - Físico", "Retirado" -> Color(0xFFFFE4E6) to Color(0xFF9F1239)
         "Apenas Histórico" -> Color(0xFFDBEAFE) to Color(0xFF1E40AF)
         else -> Color(0xFFE2E8F0) to Color(0xFF334155)
     }

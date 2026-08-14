@@ -7,18 +7,21 @@ import androidx.room.PrimaryKey
 data class EgressoEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val codigo: String,                      // Matrícula / Código (e.g. "20191024")
+    val codigo: String,                      // SGDE (Código do Aluno)
     val nome: String,                        // Nome Completo
-    val cpf: String,                         // CPF (e.g. "123.456.789-00")
+    val cpf: String = "",                    // CPF
     val rg: String = "",                     // RG / Doc
-    val curso: String,                       // Curso (e.g. "Engenharia Civil")
-    val anoConclusao: Int,                   // Ano de Conclusão / Saída
+    val genero: String = "",                 // Sexo / Gênero (Feminino, Masculino, Outro, etc.)
+    val curso: String = "",                  // Curso / Modalidade
+    val anoConclusao: Int = 0,               // Ano de Conclusão / Saída
     val turma: String = "",                  // Turma / Turno
-    val statusDocumento: String,             // e.g. "Arquivado Completo", "Pendente Certificado", "Apenas Histórico", "Retirado"
-    val caixaArquivo: String,                // Localização principal: Caixa de Arquivo Morto (e.g. "Caixa 42 - Bloco A")
-    val prateleiraCorredor: String = "",    // Localização secundária: Prateleira/Estante
+    val statusDocumento: String = "Arquivado Completo", // "Arquivado Completo", "Ativo", "Pendente Certificado", "Apenas Histórico", "Retirado - Físico", "2ª via digital"
+    val formatoEnvioDigital: String = "",    // "E-mail" ou "WhatsApp"
+    val dataEnvioDigital: String = "",       // Data de Retirada / Envio digital (DD/MM/AAAA)
+    val caixaArquivo: String,                // Localização: Caixa de Arquivo Morto
+    val prateleiraCorredor: String = "",    // Prateleira/Estante
     val pastaProtocolo: String = "",        // Número da Pasta / Prontuário
-    val driveUrl: String = "",              // Link para pasta/documento digital no Google Drive
-    val observacoes: String = "",            // Notas de arquivo
+    val observacoes: String = "",            // Observações
+    val cadastradoPor: String = "",          // Usuário / Operador responsável
     val dataCadastro: Long = System.currentTimeMillis()
 )

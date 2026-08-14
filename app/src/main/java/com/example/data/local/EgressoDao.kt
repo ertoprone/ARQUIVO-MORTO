@@ -17,7 +17,14 @@ interface EgressoDao {
 
     @Query("""
         SELECT * FROM egressos 
-        WHERE (:query = '' OR nome LIKE '%' || :query || '%' OR codigo LIKE '%' || :query || '%' OR cpf LIKE '%' || :query || '%' OR caixaArquivo LIKE '%' || :query || '%')
+        WHERE (:query = '' 
+            OR nome LIKE '%' || :query || '%' 
+            OR codigo LIKE '%' || :query || '%' 
+            OR cpf LIKE '%' || :query || '%' 
+            OR rg LIKE '%' || :query || '%' 
+            OR genero LIKE '%' || :query || '%' 
+            OR caixaArquivo LIKE '%' || :query || '%'
+            OR pastaProtocolo LIKE '%' || :query || '%')
         AND (:curso = '' OR curso = :curso)
         AND (:status = '' OR statusDocumento = :status)
         AND (:caixa = '' OR caixaArquivo = :caixa)
@@ -50,8 +57,23 @@ interface EgressoDao {
     @Query("SELECT DISTINCT statusDocumento FROM egressos WHERE statusDocumento IS NOT NULL AND statusDocumento != '' ORDER BY statusDocumento ASC")
     fun getDistinctStatus(): Flow<List<String>>
 
+    @Query("SELECT * FROM egressos WHERE codigo = :codigo LIMIT 1")
+    suspend fun getByCodigo(codigo: String): EgressoEntity?
+
+    @Query("SELECT * FROM egressos ORDER BY nome ASC")
+    suspend fun getAllList(): List<EgressoEntity>
+
+    @Query("DELETE FROM egressos WHERE codigo = :codigo")
+    suspend fun deleteByCodigo(codigo: String)
+
     @Query("SELECT COUNT(*) FROM egressos")
     suspend fun getCount(): Int
+
+    @Query("UPDATE egressos SET statusDocumento = :newStatus WHERE id IN (:ids)")
+    suspend fun updateBatchStatus(ids: List<Long>, newStatus: String)
+
+    @Query("SELECT * FROM egressos WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<EgressoEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(egressos: List<EgressoEntity>)

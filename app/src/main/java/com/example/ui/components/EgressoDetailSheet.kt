@@ -18,16 +18,13 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SendToMobile
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +36,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +49,7 @@ import com.example.util.ExportHelper
 @Composable
 fun EgressoDetailSheet(
     egresso: EgressoEntity,
+    schoolName: String = "GESTÃO DE PRONTUÁRIOS",
     onDismiss: () -> Unit,
     onEdit: (EgressoEntity) -> Unit,
     onDelete: (EgressoEntity) -> Unit
@@ -71,7 +70,7 @@ fun EgressoDetailSheet(
                 .verticalScroll(rememberScrollState())
                 .testTag("egresso_detail_sheet")
         ) {
-            // Header
+            // Header: Dynamic School branding & close button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -95,9 +94,9 @@ fun EgressoDetailSheet(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Prontuário do Egresso",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "${schoolName.uppercase()} - ARQUIVO",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = egresso.nome,
@@ -155,7 +154,7 @@ fun EgressoDetailSheet(
                     if (egresso.prateleiraCorredor.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         DetailItem(
-                            label = "Prateleira / Corredor / Estante",
+                            label = "Prateleira / Estante / Corredor",
                             value = egresso.prateleiraCorredor,
                             isInverse = true
                         )
@@ -172,11 +171,62 @@ fun EgressoDetailSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            // Digital Withdrawal / 2ª via info
+            if (egresso.statusDocumento == "2ª via digital" || egresso.formatoEnvioDigital.isNotEmpty() || egresso.dataEnvioDigital.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEDE9FE))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.SendToMobile,
+                                contentDescription = null,
+                                tint = Color(0xFF6D28D9)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "DETALHES DE 2ª VIA DIGITAL",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                ),
+                                color = Color(0xFF5B21B6)
+                            )
+                        }
+
+                        if (egresso.formatoEnvioDigital.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "Formato de Envio: ${egresso.formatoEnvioDigital}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color(0xFF4C1D95)
+                            )
+                        }
+
+                        if (egresso.dataEnvioDigital.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Data de Retirada / Envio: ${egresso.dataEnvioDigital}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color(0xFF4C1D95)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Student Information Section
             Text(
-                text = "DADOS DE IDENTIFICAÇÃO",
+                text = "DADOS CADASTRAIS DO EGRESSO",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -191,10 +241,12 @@ fun EgressoDetailSheet(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.weight(1f)) {
-                            DetailItem(label = "Código / Matrícula", value = egresso.codigo)
+                            DetailItem(label = "Código SGDE", value = egresso.codigo)
                         }
-                        Column(modifier = Modifier.weight(1f)) {
-                            DetailItem(label = "CPF", value = egresso.cpf)
+                        if (egresso.cpf.isNotEmpty()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                DetailItem(label = "CPF", value = egresso.cpf)
+                            }
                         }
                     }
 
@@ -207,10 +259,12 @@ fun EgressoDetailSheet(
 
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.weight(1f)) {
-                            DetailItem(label = "Curso", value = egresso.curso)
+                            DetailItem(label = "Curso / Modalidade", value = egresso.curso.ifEmpty { "Ensino Médio" })
                         }
-                        Column(modifier = Modifier.weight(1f)) {
-                            DetailItem(label = "Ano de Conclusão", value = egresso.anoConclusao.toString())
+                        if (egresso.anoConclusao > 0) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                DetailItem(label = "Ano de Conclusão", value = egresso.anoConclusao.toString())
+                            }
                         }
                     }
 
@@ -225,7 +279,7 @@ fun EgressoDetailSheet(
 
             // Document Status Section
             Text(
-                text = "STATUS DOCUMENTAL & NOTAS",
+                text = "SITUAÇÃO DOCUMENTAL & NOTAS",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -244,11 +298,25 @@ fun EgressoDetailSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Situação dos Documentos:",
+                            text = "Situação do Documento:",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         StatusChip(status = egresso.statusDocumento)
+                    }
+
+                    if (egresso.cadastradoPor.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Cadastrado / Modificado Por:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = egresso.cadastradoPor,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
 
                     if (egresso.observacoes.isNotEmpty()) {
@@ -267,44 +335,18 @@ fun EgressoDetailSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Action Buttons
             Button(
-                onClick = {
-                    val urlToOpen = if (egresso.driveUrl.isNotBlank()) egresso.driveUrl else "https://drive.google.com"
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(urlToOpen))
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Não foi possível abrir o Google Drive.", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Icon(imageVector = Icons.Default.Folder, contentDescription = "Google Drive")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (egresso.driveUrl.isNotBlank()) "Abrir Arquivo no Google Drive" else "Abrir Espaço no Google Drive"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Button(
-                onClick = { ExportHelper.shareLocationSlip(context, egresso) },
+                onClick = { ExportHelper.shareLocationSlip(context, egresso, schoolName) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
             ) {
                 Icon(imageVector = Icons.Default.Share, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Emitir / Compartilhar Guia de Localização")
+                Text("Emitir / Compartilhar Termo de Retirada")
             }
 
             Spacer(modifier = Modifier.height(10.dp))

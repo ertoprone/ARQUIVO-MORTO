@@ -11,6 +11,7 @@ object SampleDataGenerator {
                 nome = "Ana Beatriz Souza Ribeiro",
                 cpf = "123.456.789-01",
                 rg = "12.345.678-SSP/SP",
+                genero = "Feminino",
                 curso = "Engenharia Civil",
                 anoConclusao = 2022,
                 turma = "Matutino - T01",
@@ -25,6 +26,7 @@ object SampleDataGenerator {
                 nome = "Bruno Castro Alencar",
                 cpf = "234.567.890-12",
                 rg = "23.456.789-SSP/RJ",
+                genero = "Masculino",
                 curso = "Direito",
                 anoConclusao = 2021,
                 turma = "Noturno - T02",
@@ -39,6 +41,7 @@ object SampleDataGenerator {
                 nome = "Camila Fernandes Lima",
                 cpf = "345.678.901-23",
                 rg = "34.567.890-SSP/MG",
+                genero = "Feminino",
                 curso = "Administração",
                 anoConclusao = 2023,
                 turma = "Vespertino - T01",
@@ -221,12 +224,13 @@ object SampleDataGenerator {
 
     fun generateCSV(egressos: List<EgressoEntity>): String {
         val sb = StringBuilder()
-        sb.append("Nome;Matrícula;CPF;RG;Curso;Ano de Conclusão;Turma;Caixa de Arquivo;Prateleira;Pasta/Protocolo;Status do Documento;Observações\n")
+        sb.append("Nome;Matrícula;CPF;RG;Sexo/Gênero;Curso;Ano de Conclusão;Turma;Caixa de Arquivo;Prateleira;Pasta/Protocolo;Status do Documento;Observações\n")
         for (e in egressos) {
             val nome = e.nome.replace(";", ",")
             val cod = e.codigo.replace(";", ",")
             val cpf = e.cpf.replace(";", ",")
             val rg = e.rg.replace(";", ",")
+            val genero = e.genero.replace(";", ",")
             val curso = e.curso.replace(";", ",")
             val turma = e.turma.replace(";", ",")
             val caixa = e.caixaArquivo.replace(";", ",")
@@ -235,7 +239,7 @@ object SampleDataGenerator {
             val status = e.statusDocumento.replace(";", ",")
             val obs = e.observacoes.replace(";", ",").replace("\n", " ")
             
-            sb.append("${nome};${cod};${cpf};${rg};${curso};${e.anoConclusao};${turma};${caixa};${prat};${pasta};${status};${obs}\n")
+            sb.append("${nome};${cod};${cpf};${rg};${genero};${curso};${e.anoConclusao};${turma};${caixa};${prat};${pasta};${status};${obs}\n")
         }
         return sb.toString()
     }

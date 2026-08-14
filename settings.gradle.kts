@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ArquivoMortoEgressos"
+rootProject.name = "GestaoDeProntuarios"
 
 include(":app")

@@ -90,7 +90,7 @@ fun FilterDialog(
                     "nome_desc" to "Nome (Z -> A)",
                     "ano_desc" to "Ano de Conclusão (Mais Recente)",
                     "ano_asc" to "Ano de Conclusão (Mais Antigo)",
-                    "codigo" to "Código / Matrícula"
+                    "codigo" to "Código SGDE"
                 )
 
                 sortOptions.forEach { (key, label) ->

@@ -1,6 +1,6 @@
 {
-  "name": "Arquivo Morto - Egressos",
-  "description": "Sistema de busca rápida e gestão de documentos de estudantes egressos em arquivo morto com importação de planilhas Excel/CSV, filtros avançados e exportação.",
+  "name": "Gestão de Prontuários",
+  "description": "Sistema de busca rápida e gestão de documentos de estudantes egressos e prontuários com importação de planilhas Excel/CSV, filtros avançados e exportação.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
