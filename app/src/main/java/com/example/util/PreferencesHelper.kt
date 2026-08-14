@@ -15,7 +15,7 @@ class PreferencesHelper(context: Context) {
         private const val KEY_SCHOOL_NAME = "school_name"
 
         const val DEFAULT_SCHOOL_NAME = "GESTÃO DE PRONTUÁRIOS"
-        const val DEFAULT_OPERATOR_NAME = "Rúbia Elise"
+        const val DEFAULT_OPERATOR_NAME = "Operador 01"
         const val DEFAULT_EMAIL = "secretariaeecv@gmail.com"
         const val MAX_OPERATORS = 3
     }

@@ -38,6 +38,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val database = AppDatabase.getInstance(application)
         repository = EgressoRepository(database.egressoDao())
+        
+        // Auto-clean any legacy "Rúbia Elise" operator from local prefs if present
+        val currentLocalOps = prefsHelper.operatorsList.filter { !it.contains("Rúbia", ignoreCase = true) && !it.contains("Rubia", ignoreCase = true) }
+        val sanitizedOps = if (currentLocalOps.isEmpty()) listOf("Secretaria") else currentLocalOps
+        if (sanitizedOps != prefsHelper.operatorsList) {
+            prefsHelper.operatorsList = sanitizedOps
+            if (prefsHelper.activeOperatorName.contains("Rúbia", ignoreCase = true) || prefsHelper.activeOperatorName.contains("Rubia", ignoreCase = true)) {
+                prefsHelper.activeOperatorName = sanitizedOps.first()
+            }
+        }
+
         startRealtimeListener()
         fetchCloudSystemConfig()
     }
@@ -67,8 +78,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _registeredEmail.value = rEmail
                     }
                     if (!ops.isNullOrEmpty()) {
-                        prefsHelper.operatorsList = ops
-                        _operatorsList.value = ops
+                        val cleanOps = ops.filter { !it.contains("Rúbia", ignoreCase = true) && !it.contains("Rubia", ignoreCase = true) }
+                        val finalOps = if (cleanOps.isEmpty()) listOf("Secretaria") else cleanOps
+                        prefsHelper.operatorsList = finalOps
+                        _operatorsList.value = finalOps
+                        if (_activeOperator.value.contains("Rúbia", ignoreCase = true) || _activeOperator.value.contains("Rubia", ignoreCase = true)) {
+                            _activeOperator.value = finalOps.first()
+                            prefsHelper.activeOperatorName = finalOps.first()
+                        }
+                        if (cleanOps.size != ops.size) {
+                            pushConfigToCloud()
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -162,7 +182,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ): Boolean {
         val cleanEmail = email.trim().lowercase()
         val cleanPassword = password.trim()
-        val cleanOp = firstOperator.trim().ifEmpty { "Rúbia Elise" }
+        val cleanOp = firstOperator.trim().ifEmpty { "Operador 01" }
         val cleanSchool = school.trim().ifEmpty { "GESTÃO DE PRONTUÁRIOS" }
 
         if (cleanEmail.isBlank() || cleanPassword.isBlank()) return false

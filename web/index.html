@@ -65,10 +65,10 @@
           </div>
         </div>
 
-        <!-- Center: Credits Badge -->
+        <!-- Center: System Info Badge -->
         <div class="hidden lg:flex items-center bg-slate-800/80 border border-slate-700/80 rounded-full px-3.5 py-1 text-xs text-indigo-200">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400 mr-1.5"></i>
-          <span>Desenvolvido por <strong class="text-white">Rúbia Elise</strong></span>
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-400 mr-1.5"></i>
+          <span>Sistema Oficial de <strong class="text-white">Prontuários & Arquivo Morto</strong></span>
         </div>
 
         <!-- Right Side Actions & Active Operator -->
@@ -83,7 +83,7 @@
           <!-- Operator Selector (Max 3) -->
           <button id="btnOpenOperators" onclick="openOperatorsModal()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-700 transition">
             <i data-lucide="user-check" class="w-3.5 h-3.5 text-indigo-400"></i>
-            <span id="headerOperatorName">Op: Rúbia Elise</span>
+            <span id="headerOperatorName">Op: Operador</span>
             <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
           </button>
 
@@ -346,9 +346,9 @@
       <div>
         <span id="footerSchoolName">GESTÃO DE PRONTUÁRIOS</span> • Sistema de Arquivo Morto & Egressos
       </div>
-      <div class="flex items-center space-x-1">
-        <span>Desenvolvido com carinho por</span>
-        <strong class="text-slate-600">Rúbia Elise</strong>
+      <div class="flex items-center space-x-1 text-slate-500">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-500"></i>
+        <span>Secretaria Escolar • Sincronização em Tempo Real</span>
       </div>
     </div>
   </footer>
@@ -1141,7 +1141,7 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Nome do Primeiro Operador</label>
-            <input type="text" id="setupOpInput" value="Rúbia Elise" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+            <input type="text" id="setupOpInput" value="Operador 01" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
           </div>
 
           <div class="grid grid-cols-2 gap-2">
@@ -1210,8 +1210,17 @@
     // 2. STATE MANAGEMENT & AUTH
     let allEgressos = [];
     let schoolName = localStorage.getItem("school_name") || "GESTÃO DE PRONTUÁRIOS";
-    let activeOperator = localStorage.getItem("active_operator") || "Rúbia Elise";
-    let operatorsList = JSON.parse(localStorage.getItem("operators_list") || '["Rúbia Elise"]');
+    
+    // Auto-clean any legacy Rubia operator from localStorage
+    let rawLocalOps = JSON.parse(localStorage.getItem("operators_list") || '["Secretaria"]');
+    let operatorsList = rawLocalOps.filter(op => !op.toLowerCase().includes("rúbia") && !op.toLowerCase().includes("rubia"));
+    if (operatorsList.length === 0) operatorsList = ["Secretaria"];
+    localStorage.setItem("operators_list", JSON.stringify(operatorsList));
+
+    let rawActiveOp = localStorage.getItem("active_operator") || operatorsList[0];
+    let activeOperator = (rawActiveOp.toLowerCase().includes("rúbia") || rawActiveOp.toLowerCase().includes("rubia") || !operatorsList.includes(rawActiveOp)) ? operatorsList[0] : rawActiveOp;
+    localStorage.setItem("active_operator", activeOperator);
+
     let registeredPassword = localStorage.getItem("registered_password") || "";
     let registeredEmail = localStorage.getItem("registered_email") || "secretariaeecv@gmail.com";
     let isAccessConfigured = localStorage.getItem("is_access_configured") === "true";
@@ -2499,11 +2508,15 @@
             localStorage.setItem("registered_email", registeredEmail);
           }
           if (Array.isArray(cfg.operatorsList) && cfg.operatorsList.length > 0) {
-            operatorsList = cfg.operatorsList;
+            const cleanOps = cfg.operatorsList.filter(op => !op.toLowerCase().includes("rúbia") && !op.toLowerCase().includes("rubia"));
+            operatorsList = cleanOps.length > 0 ? cleanOps : ["Secretaria"];
             localStorage.setItem("operators_list", JSON.stringify(operatorsList));
             if (!operatorsList.includes(activeOperator)) {
               activeOperator = operatorsList[0];
               localStorage.setItem("active_operator", activeOperator);
+            }
+            if (cleanOps.length !== cfg.operatorsList.length) {
+              syncCloudConfig();
             }
           }
         }
