@@ -39,6 +39,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val database = AppDatabase.getInstance(application)
         repository = EgressoRepository(database.egressoDao())
         startRealtimeListener()
+        fetchCloudSystemConfig()
+    }
+
+    private fun fetchCloudSystemConfig() {
+        viewModelScope.launch {
+            try {
+                val cloudCfg = repository.fetchSystemConfig()
+                if (cloudCfg != null) {
+                    val sName = cloudCfg["schoolName"] as? String
+                    val rEmail = cloudCfg["registeredEmail"] as? String
+                    val rPass = cloudCfg["registeredPassword"] as? String
+                    @Suppress("UNCHECKED_CAST")
+                    val ops = cloudCfg["operatorsList"] as? List<String>
+
+                    if (!sName.isNullOrBlank() && prefsHelper.schoolName == PreferencesHelper.DEFAULT_SCHOOL_NAME) {
+                        prefsHelper.schoolName = sName
+                        _schoolName.value = sName
+                    }
+                    if (!rPass.isNullOrBlank() && prefsHelper.registeredPassword.isBlank()) {
+                        prefsHelper.registeredPassword = rPass
+                        prefsHelper.isAccessConfigured = true
+                        _isAccessConfigured.value = true
+                    }
+                    if (!rEmail.isNullOrBlank()) {
+                        prefsHelper.registeredEmail = rEmail
+                        _registeredEmail.value = rEmail
+                    }
+                    if (!ops.isNullOrEmpty()) {
+                        prefsHelper.operatorsList = ops
+                        _operatorsList.value = ops
+                    }
+                }
+            } catch (e: Exception) {
+                // ignore network errors
+            }
+        }
+    }
+
+    private fun pushConfigToCloud() {
+        viewModelScope.launch {
+            try {
+                repository.pushSystemConfig(
+                    schoolName = prefsHelper.schoolName,
+                    email = prefsHelper.registeredEmail,
+                    password = prefsHelper.registeredPassword,
+                    operators = prefsHelper.operatorsList
+                )
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
     }
 
     private fun startRealtimeListener() {
@@ -100,6 +151,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefsHelper.schoolName = trimmed
         _schoolName.value = trimmed
         _userFeedbackMessage.value = "Nome da instituição atualizado para: $trimmed"
+        pushConfigToCloud()
     }
 
     fun configureFirstAccess(
@@ -131,6 +183,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isAuthenticated.value = true
         _userFeedbackMessage.value = "Sistema configurado com sucesso! Bem-vindo(a), $cleanOp."
 
+        pushConfigToCloud()
         syncWithCloud(silent = false)
         return true
     }
@@ -180,6 +233,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefsHelper.operatorsList = current
         _operatorsList.value = current
         _userFeedbackMessage.value = "Operador \"$trimmed\" cadastrado com sucesso!"
+        pushConfigToCloud()
         return true
     }
 
@@ -197,6 +251,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _activeOperator.value = trimmedNew
         }
         _userFeedbackMessage.value = "Nome do operador atualizado para \"$trimmedNew\""
+        pushConfigToCloud()
         return true
     }
 
@@ -215,6 +270,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _activeOperator.value = fallback
         }
         _userFeedbackMessage.value = "Operador \"$operatorToRemove\" removido."
+        pushConfigToCloud()
     }
 
     fun logoutUser() {

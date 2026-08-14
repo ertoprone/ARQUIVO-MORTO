@@ -46,6 +46,14 @@ class EgressoRepository(
     val distinctCaixas: Flow<List<String>> = egressoDao.getDistinctCaixas()
     val distinctStatus: Flow<List<String>> = egressoDao.getDistinctStatus()
 
+    suspend fun pushSystemConfig(schoolName: String, email: String, password: String, operators: List<String>): Boolean {
+        return cloudSyncService.pushSystemConfig(schoolName, email, password, operators)
+    }
+
+    suspend fun fetchSystemConfig(): Map<String, Any>? {
+        return cloudSyncService.fetchSystemConfig()
+    }
+
     suspend fun updateLocalFromCloud(cloudItems: List<EgressoEntity>) {
         if (cloudItems.isEmpty()) return
         for (cloudItem in cloudItems) {

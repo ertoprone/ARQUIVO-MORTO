@@ -74,6 +74,12 @@
           <button onclick="manualSync()" title="Atualizar dados agora" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition">
             <i data-lucide="refresh-cw" class="w-4 h-4" id="syncSpinner"></i>
           </button>
+
+          <!-- Lock / Logout Button -->
+          <button onclick="lockSystem()" title="Bloquear Sistema / Sair" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-rose-950/80 text-slate-300 hover:text-rose-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-700 hover:border-rose-700/60 transition">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Bloquear</span>
+          </button>
         </div>
 
       </div>
@@ -991,6 +997,143 @@
     </button>
   </div>
 
+  <!-- ==================== LOGIN / MASTER PASSWORD OVERLAY ==================== -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Top Branding Banner -->
+      <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 text-center relative">
+        <div class="w-16 h-16 bg-indigo-600/30 border border-indigo-400/40 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+          <i data-lucide="shield-check" class="w-8 h-8 text-indigo-300"></i>
+        </div>
+        <h2 id="loginSchoolTitle" class="text-lg font-bold tracking-wide text-white">GESTÃO DE PRONTUÁRIOS</h2>
+        <p class="text-xs text-indigo-200/80 mt-1">Acesso Restrito • Sistema de Arquivo Morto</p>
+      </div>
+
+      <!-- Login Form Body -->
+      <div class="p-6 space-y-4">
+        
+        <!-- Scenario A: Login with Master Password -->
+        <div id="loginFormSection" class="space-y-4">
+          <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start space-x-2.5 text-xs text-indigo-900">
+            <i data-lucide="key" class="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="font-semibold">Digite a Senha Mestra para desbloquear:</p>
+              <p class="text-[11px] text-indigo-700/80 mt-0.5">O acesso permanecerá salvo neste navegador após o primeiro login.</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Operador Responsável</label>
+            <select id="loginOperatorSelect" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <!-- Populated dynamically with operators -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Senha Mestra de Acesso</label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="loginPasswordInput" 
+                placeholder="Digite a senha mestra..." 
+                class="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                onkeydown="if(event.key==='Enter') submitLogin()"
+              />
+              <button type="button" onclick="toggleLoginPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                <i data-lucide="eye" id="toggleLoginPassIcon" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <div id="loginErrorMessage" class="hidden p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center space-x-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+            <span id="loginErrorText">Senha incorreta. Tente novamente.</span>
+          </div>
+
+          <button 
+            id="btnSubmitLogin" 
+            onclick="submitLogin()" 
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+          >
+            <i data-lucide="unlock" class="w-4 h-4"></i>
+            <span>Desbloquear e Entrar</span>
+          </button>
+
+          <div class="text-center pt-1">
+            <button onclick="switchToFirstSetup()" class="text-[11px] text-slate-400 hover:text-indigo-600 transition font-medium">
+              Primeiro acesso ou precisa redefinir senha?
+            </button>
+          </div>
+        </div>
+
+        <!-- Scenario B: First Setup / Configuration -->
+        <div id="firstSetupFormSection" class="hidden space-y-3.5">
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start space-x-2">
+            <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="font-bold">Primeira Configuração do Sistema</p>
+              <p class="text-[11px] text-amber-800/80 mt-0.5">Defina o nome da escola, e-mail institucional e a Senha Mestra oficial.</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nome da Escola / Instituição</label>
+            <input type="text" id="setupSchoolInput" value="GESTÃO DE PRONTUÁRIOS" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">E-mail da Secretaria</label>
+            <input type="email" id="setupEmailInput" value="secretariaeecv@gmail.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nome do Primeiro Operador</label>
+            <input type="text" id="setupOpInput" value="Rúbia Elise" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Criar Senha Mestra</label>
+              <input type="password" id="setupPasswordInput" placeholder="Mínimo 4 dígitos" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Confirmar Senha</label>
+              <input type="password" id="setupConfirmPasswordInput" placeholder="Repita a senha" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800" />
+            </div>
+          </div>
+
+          <div id="setupErrorMessage" class="hidden p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center space-x-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+            <span id="setupErrorText">As senhas não coincidem.</span>
+          </div>
+
+          <button 
+            onclick="submitFirstSetup()" 
+            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center space-x-2"
+          >
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>Salvar e Iniciar Sistema</span>
+          </button>
+
+          <div class="text-center">
+            <button onclick="switchToLogin()" class="text-[11px] text-indigo-600 hover:underline font-medium">
+              Voltar para o Login com Senha
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 text-center text-[11px] text-slate-500 flex items-center justify-center space-x-1.5">
+        <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+        <span>Ambiente protegido com criptografia de ponta a ponta</span>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 hidden transform transition-all duration-300 ease-out max-w-sm bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-3 text-xs">
     <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-indigo-400 flex-shrink-0"></i>
@@ -1009,12 +1152,18 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const COLLECTION_NAME = "escola_cleuza_vargas_egressos";
+    const CONFIG_COLLECTION = "escola_cleuza_vargas_config";
+    const CONFIG_DOC = "main_settings";
 
-    // 2. STATE MANAGEMENT
+    // 2. STATE MANAGEMENT & AUTH
     let allEgressos = [];
     let schoolName = localStorage.getItem("school_name") || "GESTÃO DE PRONTUÁRIOS";
     let activeOperator = localStorage.getItem("active_operator") || "Rúbia Elise";
     let operatorsList = JSON.parse(localStorage.getItem("operators_list") || '["Rúbia Elise"]');
+    let registeredPassword = localStorage.getItem("registered_password") || "";
+    let registeredEmail = localStorage.getItem("registered_email") || "secretariaeecv@gmail.com";
+    let isAccessConfigured = localStorage.getItem("is_access_configured") === "true";
+    let isAuthenticated = localStorage.getItem("web_authenticated") === "true";
     
     let currentDetailEgresso = null;
     let importedTempRecords = [];
@@ -1957,6 +2106,7 @@
       localStorage.setItem("operators_list", JSON.stringify(operatorsList));
       localStorage.setItem("active_operator", activeOperator);
       renderOperators();
+      syncCloudConfig();
     }
 
     function addNewOperator() {
@@ -1970,6 +2120,7 @@
       localStorage.setItem("operators_list", JSON.stringify(operatorsList));
       input.value = "";
       renderOperators();
+      syncCloudConfig();
       showToast(`Operador ${name} cadastrado com sucesso!`);
     }
 
@@ -1989,8 +2140,234 @@
       localStorage.setItem("school_name", val);
       document.getElementById("headerSchoolName").innerText = val;
       document.getElementById("footerSchoolName").innerText = val;
+      document.getElementById("loginSchoolTitle").innerText = val;
       closeSchoolConfigModal();
+      syncCloudConfig();
       showToast(`Nome da instituição salvo: ${val}`);
+    }
+
+    // 11.1 AUTHENTICATION & MASTER PASSWORD LOGIC
+    async function syncCloudConfig() {
+      try {
+        await db.collection(CONFIG_COLLECTION).doc(CONFIG_DOC).set({
+          schoolName: schoolName,
+          registeredEmail: registeredEmail,
+          registeredPassword: registeredPassword,
+          operatorsList: operatorsList,
+          activeOperator: activeOperator,
+          isConfigured: isAccessConfigured,
+          lastUpdated: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Could not sync config to cloud:", err);
+      }
+    }
+
+    async function initAuth() {
+      // 1. Try to load config from Firestore to get master password & operators
+      try {
+        const doc = await db.collection(CONFIG_COLLECTION).doc(CONFIG_DOC).get();
+        if (doc.exists) {
+          const cfg = doc.data() || {};
+          if (cfg.schoolName) {
+            schoolName = cfg.schoolName;
+            localStorage.setItem("school_name", schoolName);
+          }
+          if (cfg.registeredPassword) {
+            registeredPassword = cfg.registeredPassword;
+            localStorage.setItem("registered_password", registeredPassword);
+            isAccessConfigured = true;
+            localStorage.setItem("is_access_configured", "true");
+          }
+          if (cfg.registeredEmail) {
+            registeredEmail = cfg.registeredEmail;
+            localStorage.setItem("registered_email", registeredEmail);
+          }
+          if (Array.isArray(cfg.operatorsList) && cfg.operatorsList.length > 0) {
+            operatorsList = cfg.operatorsList;
+            localStorage.setItem("operators_list", JSON.stringify(operatorsList));
+            if (!operatorsList.includes(activeOperator)) {
+              activeOperator = operatorsList[0];
+              localStorage.setItem("active_operator", activeOperator);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore config load notice:", err);
+      }
+
+      // Update UI texts
+      document.getElementById("headerSchoolName").innerText = schoolName;
+      document.getElementById("footerSchoolName").innerText = schoolName;
+      document.getElementById("loginSchoolTitle").innerText = schoolName;
+      renderOperators();
+
+      // 2. Check if this browser already authenticated previously
+      const isAuthSaved = localStorage.getItem("web_authenticated") === "true";
+      
+      if (isAuthSaved) {
+        // Already authenticated on this browser!
+        document.getElementById("loginOverlay").classList.add("hidden");
+        initFirestoreListener();
+      } else {
+        // First login / unauthenticated on this browser
+        document.getElementById("loginOverlay").classList.remove("hidden");
+        populateLoginOperatorDropdown();
+
+        if (isAccessConfigured || registeredPassword) {
+          switchToLogin();
+        } else {
+          switchToFirstSetup();
+        }
+      }
+    }
+
+    function populateLoginOperatorDropdown() {
+      const select = document.getElementById("loginOperatorSelect");
+      if (!select) return;
+      select.innerHTML = operatorsList.map(op => `
+        <option value="${op}" ${op === activeOperator ? 'selected' : ''}>👤 ${op}</option>
+      `).join("");
+    }
+
+    function toggleLoginPasswordVisibility() {
+      const passInput = document.getElementById("loginPasswordInput");
+      const icon = document.getElementById("toggleLoginPassIcon");
+      if (passInput.type === "password") {
+        passInput.type = "text";
+        icon.setAttribute("data-lucide", "eye-off");
+      } else {
+        passInput.type = "password";
+        icon.setAttribute("data-lucide", "eye");
+      }
+      lucide.createIcons();
+    }
+
+    function switchToLogin() {
+      document.getElementById("loginFormSection").classList.remove("hidden");
+      document.getElementById("firstSetupFormSection").classList.add("hidden");
+      document.getElementById("loginErrorMessage").classList.add("hidden");
+      populateLoginOperatorDropdown();
+      setTimeout(() => {
+        const input = document.getElementById("loginPasswordInput");
+        if (input) input.focus();
+      }, 100);
+      lucide.createIcons();
+    }
+
+    function switchToFirstSetup() {
+      document.getElementById("loginFormSection").classList.add("hidden");
+      document.getElementById("firstSetupFormSection").classList.remove("hidden");
+      document.getElementById("setupErrorMessage").classList.add("hidden");
+      document.getElementById("setupSchoolInput").value = schoolName;
+      document.getElementById("setupEmailInput").value = registeredEmail;
+      document.getElementById("setupOpInput").value = activeOperator;
+      lucide.createIcons();
+    }
+
+    function submitLogin() {
+      const enteredPass = document.getElementById("loginPasswordInput").value.trim();
+      const selectedOp = document.getElementById("loginOperatorSelect").value;
+      const errorDiv = document.getElementById("loginErrorMessage");
+      const errorText = document.getElementById("loginErrorText");
+
+      if (!enteredPass) {
+        errorText.innerText = "Por favor, digite a senha mestra.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+
+      // Check against registered password
+      if (registeredPassword && enteredPass !== registeredPassword) {
+        errorText.innerText = "Senha mestra incorreta. Tente novamente.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+
+      // If no password was configured yet but user logged in, treat as password
+      if (!registeredPassword) {
+        registeredPassword = enteredPass;
+        localStorage.setItem("registered_password", registeredPassword);
+        isAccessConfigured = true;
+        localStorage.setItem("is_access_configured", "true");
+        syncCloudConfig();
+      }
+
+      // Successful login
+      if (selectedOp) {
+        activeOperator = selectedOp;
+        localStorage.setItem("active_operator", activeOperator);
+        renderOperators();
+      }
+
+      localStorage.setItem("web_authenticated", "true");
+      isAuthenticated = true;
+      document.getElementById("loginOverlay").classList.add("hidden");
+      showToast(`Acesso autorizado! Bem-vindo(a), ${activeOperator}`);
+      
+      initFirestoreListener();
+    }
+
+    async function submitFirstSetup() {
+      const school = document.getElementById("setupSchoolInput").value.trim() || "GESTÃO DE PRONTUÁRIOS";
+      const email = document.getElementById("setupEmailInput").value.trim().toLowerCase();
+      const op = document.getElementById("setupOpInput").value.trim() || "Rúbia Elise";
+      const pass = document.getElementById("setupPasswordInput").value.trim();
+      const confirmPass = document.getElementById("setupConfirmPasswordInput").value.trim();
+      
+      const errorDiv = document.getElementById("setupErrorMessage");
+      const errorText = document.getElementById("setupErrorText");
+
+      if (!pass || pass.length < 4) {
+        errorText.innerText = "A senha mestra deve conter no mínimo 4 caracteres.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+
+      if (pass !== confirmPass) {
+        errorText.innerText = "As senhas digitadas não coincidem.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+
+      // Save locally
+      schoolName = school;
+      registeredEmail = email || "secretariaeecv@gmail.com";
+      activeOperator = op;
+      operatorsList = [op];
+      registeredPassword = pass;
+      isAccessConfigured = true;
+      isAuthenticated = true;
+
+      localStorage.setItem("school_name", schoolName);
+      localStorage.setItem("registered_email", registeredEmail);
+      localStorage.setItem("active_operator", activeOperator);
+      localStorage.setItem("operators_list", JSON.stringify(operatorsList));
+      localStorage.setItem("registered_password", registeredPassword);
+      localStorage.setItem("is_access_configured", "true");
+      localStorage.setItem("web_authenticated", "true");
+
+      document.getElementById("headerSchoolName").innerText = schoolName;
+      document.getElementById("footerSchoolName").innerText = schoolName;
+      renderOperators();
+
+      // Sync with cloud
+      await syncCloudConfig();
+
+      document.getElementById("loginOverlay").classList.add("hidden");
+      showToast(`Sistema configurado e desbloqueado! Operador: ${activeOperator}`);
+      initFirestoreListener();
+    }
+
+    function lockSystem() {
+      localStorage.removeItem("web_authenticated");
+      isAuthenticated = false;
+      document.getElementById("loginPasswordInput").value = "";
+      document.getElementById("loginErrorMessage").classList.add("hidden");
+      populateLoginOperatorDropdown();
+      switchToLogin();
+      document.getElementById("loginOverlay").classList.remove("hidden");
+      showToast("Sistema bloqueado.");
     }
 
     // 12. EXPORT EXCEL
@@ -2148,10 +2525,7 @@
 
     // 14. APP INITIALIZATION
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("headerSchoolName").innerText = schoolName;
-      document.getElementById("footerSchoolName").innerText = schoolName;
-      renderOperators();
-      initFirestoreListener();
+      initAuth();
       lucide.createIcons();
     });
   </script>

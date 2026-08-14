@@ -25,6 +25,42 @@ class FirebaseSyncService {
     }
 
     private fun getCollection() = firestore?.collection("escola_cleuza_vargas_egressos")
+    private fun getConfigCollection() = firestore?.collection("escola_cleuza_vargas_config")
+
+    suspend fun pushSystemConfig(
+        schoolName: String,
+        email: String,
+        password: String,
+        operators: List<String>
+    ): Boolean = withContext(Dispatchers.IO) {
+        val collection = getConfigCollection() ?: return@withContext false
+        try {
+            val data = hashMapOf<String, Any>(
+                "schoolName" to schoolName,
+                "registeredEmail" to email,
+                "registeredPassword" to password,
+                "operatorsList" to operators,
+                "isConfigured" to true,
+                "lastUpdated" to System.currentTimeMillis()
+            )
+            collection.document("main_settings").set(data, SetOptions.merge()).awaitTask()
+            true
+        } catch (e: Throwable) {
+            Log.w("FirebaseSyncService", "Could not push system config (offline/local mode active): ${e.message}")
+            false
+        }
+    }
+
+    suspend fun fetchSystemConfig(): Map<String, Any>? = withContext(Dispatchers.IO) {
+        val collection = getConfigCollection() ?: return@withContext null
+        try {
+            val doc = collection.document("main_settings").get().awaitTask()
+            if (doc.exists()) doc.data else null
+        } catch (e: Throwable) {
+            Log.w("FirebaseSyncService", "Could not fetch system config (offline/local mode active): ${e.message}")
+            null
+        }
+    }
 
     private fun sanitizeDocId(codigo: String, fallbackId: Long): String {
         val clean = codigo.trim()
